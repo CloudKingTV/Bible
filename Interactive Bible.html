@@ -5,18 +5,2066 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Holy Bible — Interactive</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=UnifrakturCook:wght@700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<style>
+/* ===== Classic leather-bound Bible aesthetic ===== */
+:root {
+  --paper: #f2e8d0;
+  --paper-edge: #d9c9a3;
+  --paper-shadow: #8a7548;
+  --ink: #2b1d12;
+  --ink-soft: #6b5538;
+  --rubric: #8b2a1a;          /* red ink for chapter numbers */
+  --leather: #3a1d10;
+  --leather-dark: #1e0f07;
+  --leather-hi: #5a2e18;
+  --gold: #c9a14a;
+  --gold-hi: #ecd181;
+  --gold-dark: #7a5c1d;
+  --ribbon: #7a1320;
+  --ribbon-hi: #a62433;
+  --ribbon-dark: #470610;
+  --tab-ot: #6a2e1c;
+  --tab-nt: #2f3a4d;
+  --table: #3b2414;
+  --table-hi: #5a3821;
+  --flip-speed: 900ms;
+  --font-size: 15px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  font-family: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  background: #1a0f06;
+  color: var(--ink);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Wooden table surface ===== */
+.table-surface {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(255,200,120,0.12), transparent 55%),
+    repeating-linear-gradient(92deg,
+      #3d2515 0 3px,
+      #4a2d19 3px 7px,
+      #38200f 7px 14px,
+      #452a16 14px 22px),
+    #2a1708;
+  overflow: hidden;
+}
+.table-surface::before {
+  /* long wood grain streaks */
+  content: "";
+  position: absolute; inset: -10%;
+  background:
+    repeating-linear-gradient(91deg,
+      transparent 0 80px,
+      rgba(0,0,0,0.18) 80px 82px,
+      transparent 82px 160px),
+    repeating-linear-gradient(89deg,
+      transparent 0 140px,
+      rgba(255,220,160,0.06) 140px 142px,
+      transparent 142px 300px);
+  filter: blur(0.4px);
+  pointer-events: none;
+}
+.table-surface::after {
+  /* vignette */
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 55%, transparent 30%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.85) 100%);
+  pointer-events: none;
+}
+
+/* Soft candle-light flicker */
+.candle-light {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 900px 600px at 50% 30%, rgba(255,210,150,0.14), transparent 60%);
+  animation: flicker 5s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes flicker {
+  0% { opacity: 0.85; transform: translate(0, 0); }
+  50% { opacity: 1; transform: translate(2px, -1px); }
+  100% { opacity: 0.9; transform: translate(-1px, 2px); }
+}
+
+/* ===== Book stage (3D tilt) ===== */
+.stage {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  perspective: 2600px;
+  perspective-origin: 50% 30%;
+}
+.book-tilt {
+  transform: rotateX(38deg) rotateZ(-0.5deg);
+  transform-style: preserve-3d;
+  transform-origin: 50% 70%;
+  filter: drop-shadow(0 60px 40px rgba(0,0,0,0.6));
+}
+
+/* ===== Book (open) ===== */
+.book {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+/* Back cover + base stack visible behind pages */
+.book-base {
+  position: absolute;
+  left: -18px; top: -14px;
+  right: -18px; bottom: -14px;
+  background:
+    linear-gradient(180deg, var(--leather-hi) 0%, var(--leather) 40%, var(--leather-dark) 100%);
+  border-radius: 6px 10px 10px 6px;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,0.4),
+    inset 0 0 60px rgba(0,0,0,0.55),
+    0 30px 50px rgba(0,0,0,0.5);
+  transform: translateZ(-18px);
+}
+.book-base::before {
+  /* leather grain */
+  content: "";
+  position: absolute; inset: 6px;
+  border-radius: 4px;
+  background:
+    repeating-radial-gradient(circle at 20% 30%, rgba(0,0,0,0.18) 0 2px, transparent 2px 5px),
+    repeating-radial-gradient(circle at 70% 80%, rgba(255,255,255,0.05) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 3px, transparent 3px 7px);
+  opacity: 0.7;
+}
+.book-base::after {
+  /* gold border frame */
+  content: "";
+  position: absolute; inset: 12px;
+  border: 1.5px solid var(--gold-dark);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 3px transparent, inset 0 0 0 4px var(--gold-dark);
+}
+
+/* Page edges (the thick stack of paper) */
+.page-edges {
+  position: absolute;
+  top: 4px; bottom: 4px;
+  left: 0; right: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.page-edges::before, .page-edges::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 14px;
+  background: repeating-linear-gradient(0deg,
+    var(--paper-edge) 0 1px,
+    var(--paper-shadow) 1px 2px,
+    var(--paper-edge) 2px 3px);
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.4);
+}
+.page-edges::before {
+  left: -14px;
+  border-radius: 3px 0 0 3px;
+}
+.page-edges::after {
+  right: -14px;
+  border-radius: 0 3px 3px 0;
+}
+
+/* Spread (two pages side by side) */
+.spread {
+  position: relative;
+  display: flex;
+  transform-style: preserve-3d;
+}
+.page {
+  position: relative;
+  width: var(--page-w);
+  height: var(--page-h);
+  background:
+    radial-gradient(ellipse at 50% 30%, #f7eed6 0%, var(--paper) 50%, #e4d5b0 100%);
+  overflow: hidden;
+  box-shadow: inset 0 0 60px rgba(120, 80, 30, 0.25);
+}
+.page.left {
+  border-radius: 4px 0 0 4px;
+  box-shadow:
+    inset -20px 0 30px -10px rgba(80,50,20,0.35),
+    inset 0 0 60px rgba(120, 80, 30, 0.22);
+}
+.page.right {
+  border-radius: 0 4px 4px 0;
+  box-shadow:
+    inset 20px 0 30px -10px rgba(80,50,20,0.35),
+    inset 0 0 60px rgba(120, 80, 30, 0.22);
+}
+
+/* Paper texture overlay */
+.page::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(120,80,30,0.08) 0 1px, transparent 1px),
+    radial-gradient(circle at 80% 60%, rgba(120,80,30,0.1) 0 1px, transparent 1px),
+    radial-gradient(circle at 40% 80%, rgba(120,80,30,0.06) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 30%, rgba(120,80,30,0.07) 0 1px, transparent 1px);
+  background-size: 130px 130px, 170px 170px, 200px 200px, 110px 110px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.page::after {
+  /* subtle foxing stain */
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80px 50px at 15% 85%, rgba(140,100,40,0.12), transparent 70%),
+    radial-gradient(ellipse 60px 40px at 90% 12%, rgba(140,100,40,0.1), transparent 70%);
+  pointer-events: none;
+}
+
+/* Page content */
+.page-inner {
+  position: absolute;
+  inset: 0;
+  padding: 40px 48px 48px 48px;
+  display: flex; flex-direction: column;
+  font-size: var(--font-size);
+  line-height: 1.5;
+  color: var(--ink);
+}
+.page.left .page-inner { padding-right: 36px; padding-left: 56px; }
+.page.right .page-inner { padding-left: 36px; padding-right: 56px; }
+
+.page-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(100, 70, 30, 0.3);
+  padding-bottom: 8px;
+  margin-bottom: 18px;
+}
+.page-footer {
+  position: absolute;
+  bottom: 16px; left: 56px; right: 56px;
+  display: flex; justify-content: center;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0.2em;
+}
+.page.right .page-footer { justify-content: center; }
+
+.book-title-heading {
+  font-family: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  font-size: 1.9em;
+  text-align: center;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  margin: 8px 0 4px 0;
+  text-transform: uppercase;
+}
+.book-title-heading .flourish {
+  display: block;
+  font-size: 0.5em;
+  color: var(--ink-soft);
+  letter-spacing: 0.4em;
+  margin-top: 6px;
+}
+
+.chapter-heading {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.85em;
+  letter-spacing: 0.35em;
+  text-align: center;
+  color: var(--ink-soft);
+  margin: 8px 0 18px 0;
+  text-transform: uppercase;
+}
+
+.drop-cap {
+  float: left;
+  font-family: 'UnifrakturCook', 'UnifrakturMaguntia', 'Cinzel', serif;
+  font-size: 4.2em;
+  line-height: 0.85;
+  padding: 8px 10px 0 0;
+  color: var(--rubric);
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+}
+.verses {
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  columns: 1;
+  text-indent: 0;
+}
+.verse-num {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.72em;
+  vertical-align: super;
+  color: var(--rubric);
+  margin: 0 3px 0 2px;
+  font-weight: 700;
+}
+.verse { display: inline; }
+
+/* Title spread (left page) */
+.title-plate {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 30px;
+}
+.title-plate .ornament {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  letter-spacing: 0.6em;
+  color: var(--ink-soft);
+  margin: 10px 0;
+}
+.title-plate h1 {
+  font-family: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  font-size: 2.6em;
+  letter-spacing: 0.15em;
+  margin: 14px 0;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+.title-plate h2 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.9em;
+  letter-spacing: 0.35em;
+  color: var(--ink-soft);
+  margin: 6px 0;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.title-plate .imprint {
+  margin-top: 60px;
+  font-size: 0.75em;
+  color: var(--ink-soft);
+  font-style: italic;
+  letter-spacing: 0.08em;
+}
+
+.ornament-bar {
+  width: 60%;
+  height: 20px;
+  margin: 16px auto;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--ink-soft) 0 2px, transparent 2px),
+    linear-gradient(90deg, transparent 0%, var(--ink-soft) 20%, var(--ink-soft) 80%, transparent 100%);
+  background-size: 100% 100%, 100% 1px;
+  background-position: center, center;
+  background-repeat: no-repeat;
+}
+
+/* Center gutter shadow */
+.gutter {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 30px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(40,20,5,0.0) 30%,
+    rgba(40,20,5,0.45) 50%,
+    rgba(40,20,5,0.0) 70%,
+    transparent 100%);
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* ===== Flipping page ===== */
+.flip-layer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--page-w);
+  height: var(--page-h);
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  z-index: 20;
+  will-change: transform;
+}
+.flip-layer.reverse {
+  left: calc(50% - var(--page-w));
+  transform-origin: right center;
+}
+.flip-face {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+.flip-face.front { /* the recto side shown initially */ }
+.flip-face.back {
+  transform: rotateY(180deg);
+}
+
+/* Curl shadow that follows the flipping page */
+.flip-shadow {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 120px;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.7;
+  transition: opacity 300ms;
+}
+
+/* Riffle (multi-page) visual */
+.riffle-layer {
+  position: absolute;
+  top: 0; left: 50%;
+  width: var(--page-w);
+  height: var(--page-h);
+  transform-origin: left center;
+  pointer-events: none;
+  z-index: 25;
+}
+.riffle-sheet {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, #efe3c3 0%, #e0d0a4 100%);
+  border-right: 1px solid rgba(100,70,30,0.3);
+  box-shadow: 0 0 12px rgba(0,0,0,0.3);
+  transform-origin: left center;
+  backface-visibility: hidden;
+}
+
+/* ===== Thumb-index group tabs ===== */
+.tabs {
+  position: absolute;
+  top: 24px; bottom: 24px;
+  width: 34px;
+  display: flex; flex-direction: column;
+  gap: 3px;
+  z-index: 5;
+}
+.tabs.right { right: -34px; }
+.group-tab {
+  flex: 1;
+  min-height: 30px;
+  cursor: pointer;
+  position: relative;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 6px;
+  color: #f0e3c2;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transition: all 220ms ease;
+  border-radius: 0 4px 4px 0;
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.35), 2px 2px 4px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+.group-tab.ot-group { background: linear-gradient(90deg, #8a3a22 0%, #5a2414 100%); }
+.group-tab.nt-group { background: linear-gradient(90deg, #4a5870 0%, #222b3a 100%); }
+.group-tab::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 6px);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.group-tab:hover {
+  transform: translateX(5px);
+  filter: brightness(1.25);
+  color: var(--gold-hi);
+}
+.group-tab.current {
+  transform: translateX(7px);
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.35), -3px 0 14px rgba(255,210,120,0.45);
+  color: var(--gold-hi);
+}
+.group-tab.current::after {
+  content: "";
+  position: absolute;
+  left: -2px; top: 50%;
+  width: 3px; height: 60%;
+  background: var(--gold-hi);
+  transform: translateY(-50%);
+  box-shadow: 0 0 6px var(--gold-hi);
+  border-radius: 2px;
+}
+
+/* Flyout book picker */
+.flyout {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: calc(100% + 14px);
+  width: 220px;
+  background: rgba(30, 15, 5, 0.96);
+  border: 1px solid var(--gold-dark);
+  border-radius: 4px;
+  padding: 12px 8px 12px 14px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+  overflow-y: auto;
+  z-index: 60;
+  color: #e8d5a8;
+  backdrop-filter: blur(8px);
+}
+.flyout-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--gold-hi);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gold-dark);
+}
+.flyout-group {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 8.5px;
+  letter-spacing: 0.25em;
+  color: var(--gold-dark);
+  text-transform: uppercase;
+  margin: 12px 0 4px 0;
+}
+.flyout-book {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 13px;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex; justify-content: space-between; align-items: baseline;
+  color: #e8d5a8;
+  transition: all 150ms;
+}
+.flyout-book:hover { background: rgba(201,161,74,0.15); color: var(--gold-hi); padding-left: 12px; }
+.flyout-book.current { background: rgba(201,161,74,0.25); color: var(--gold-hi); }
+.flyout-book .num {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  color: var(--gold-dark);
+  letter-spacing: 0.15em;
+}
+.flyout::-webkit-scrollbar { width: 6px; }
+.flyout::-webkit-scrollbar-track { background: transparent; }
+.flyout::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
+
+/* ===== Ribbon bookmark ===== */
+.ribbon {
+  position: absolute;
+  top: -4px;
+  width: 26px;
+  background: linear-gradient(90deg, var(--ribbon-dark) 0%, var(--ribbon) 30%, var(--ribbon-hi) 50%, var(--ribbon) 70%, var(--ribbon-dark) 100%);
+  box-shadow:
+    inset 0 0 4px rgba(0,0,0,0.4),
+    2px 3px 8px rgba(0,0,0,0.5);
+  pointer-events: auto;
+  cursor: grab;
+  transform-origin: 50% 0;
+  z-index: 30;
+  border-radius: 0 0 2px 2px;
+}
+.ribbon:active { cursor: grabbing; }
+.ribbon::after {
+  content: "";
+  position: absolute;
+  bottom: -12px; left: 0; right: 0;
+  height: 14px;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 40%, 0 100%);
+}
+.ribbon::before {
+  /* weave texture */
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+
+/* ===== Drag-corner hint ===== */
+.corner-hint {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 60px; height: 60px;
+  cursor: grab;
+  z-index: 22;
+  background: linear-gradient(135deg, transparent 50%, rgba(120,80,30,0.15) 50%, rgba(120,80,30,0.35) 100%);
+  transition: opacity 300ms;
+  opacity: 0.6;
+}
+.corner-hint:hover { opacity: 1; }
+.corner-hint.left-corner {
+  bottom: 0; left: 0; right: auto;
+  background: linear-gradient(-135deg, transparent 50%, rgba(120,80,30,0.15) 50%, rgba(120,80,30,0.35) 100%);
+  cursor: grab;
+}
+
+/* ===== Chrome / UI ===== */
+.chrome {
+  position: fixed;
+  top: 18px; left: 18px;
+  z-index: 100;
+  color: #e8d5a8;
+  font-family: 'Cinzel', Georgia, serif;
+  letter-spacing: 0.2em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.chrome h1 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  color: var(--gold-hi);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+.chrome .sub { opacity: 0.65; margin-top: 4px; }
+
+.nav-controls {
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex; gap: 12px; align-items: center;
+  background: rgba(30, 15, 5, 0.7);
+  border: 1px solid rgba(201, 161, 74, 0.4);
+  border-radius: 24px;
+  padding: 8px 16px;
+  backdrop-filter: blur(8px);
+  color: #e8d5a8;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+}
+.nav-btn {
+  background: transparent;
+  color: var(--gold-hi);
+  border: 1px solid var(--gold-dark);
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 200ms;
+  font-family: inherit;
+}
+.nav-btn:hover:not(:disabled) { background: rgba(201,161,74,0.15); border-color: var(--gold-hi); }
+.nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.nav-label { min-width: 160px; text-align: center; color: #e8d5a8; }
+
+/* ===== Tweaks panel ===== */
+.tweaks-panel {
+  position: fixed;
+  bottom: 80px; right: 18px;
+  z-index: 200;
+  width: 280px;
+  background: rgba(25, 13, 5, 0.95);
+  border: 1px solid var(--gold-dark);
+  border-radius: 6px;
+  padding: 16px 18px;
+  color: #e8d5a8;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+.tweaks-panel h3 {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--gold-hi);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--gold-dark);
+  padding-bottom: 6px;
+}
+.tweak-row {
+  display: flex; flex-direction: column;
+  gap: 6px; margin-bottom: 12px;
+}
+.tweak-row label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #c9a14a;
+}
+.tweak-swatches {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.tweak-swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.tweak-swatch:hover { transform: scale(1.1); }
+.tweak-swatch.active { border-color: var(--gold-hi); box-shadow: 0 0 8px var(--gold-hi); }
+.tweak-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+.tweak-row .options {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.tweak-row .options button {
+  background: transparent;
+  border: 1px solid var(--gold-dark);
+  color: #e8d5a8;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.tweak-row .options button.active { background: var(--gold-dark); color: var(--leather-dark); }
+
+/* ===== Page corner curl (during drag) ===== */
+.curl-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(-45deg, rgba(0,0,0,0.25), transparent 60%);
+  opacity: 0;
+  transition: opacity 200ms;
+}
+
+/* Cover variants */
+.cover-burgundy .book-base {
+  background: linear-gradient(180deg, #8a2838 0%, #5a1522 40%, #2e060f 100%);
+}
+.cover-black .book-base {
+  background: linear-gradient(180deg, #303030 0%, #151515 40%, #050505 100%);
+}
+.cover-brown .book-base { /* default */ }
+
+/* Paper variants */
+.paper-aged { --paper: #f2e8d0; --paper-edge: #d9c9a3; --ink: #2b1d12; }
+.paper-cream { --paper: #faf3de; --paper-edge: #e9dcba; --ink: #2a2015; }
+.paper-linen { --paper: #ede0c0; --paper-edge: #c9b68a; --ink: #261a0e; }
+.paper-antique { --paper: #e8d9b3; --paper-edge: #c4ad7a; --ink: #3a2817; }
+
+/* Scroll nothing */
+.verses-scroll {
+  flex: 1;
+  overflow: hidden;
+}
+
+</style>
 </head>
 <body>
 <div id="root"></div>
 
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
-<script src="data/books.js"></script>
-<script type="text/babel" src="components/pages.jsx"></script>
-<script type="text/babel" src="components/book.jsx"></script>
-<script type="text/babel" src="components/app.jsx"></script>
+<script>
+// KJV opening verses for all 66 books of the Bible
+// Public domain (King James Version)
+window.BIBLE_BOOKS = [
+  // ============ OLD TESTAMENT ============
+  { id: "gen", name: "Genesis", abbr: "Gen", testament: "OT", group: "Pentateuch",
+    chapters: 50,
+    verses: [
+      "In the beginning God created the heaven and the earth.",
+      "And the earth was without form, and void; and darkness was upon the face of the deep. And the Spirit of God moved upon the face of the waters.",
+      "And God said, Let there be light: and there was light.",
+      "And God saw the light, that it was good: and God divided the light from the darkness.",
+      "And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day.",
+      "And God said, Let there be a firmament in the midst of the waters, and let it divide the waters from the waters.",
+      "And God made the firmament, and divided the waters which were under the firmament from the waters which were above the firmament: and it was so.",
+      "And God called the firmament Heaven. And the evening and the morning were the second day.",
+    ]},
+  { id: "exo", name: "Exodus", abbr: "Ex", testament: "OT", group: "Pentateuch",
+    chapters: 40,
+    verses: [
+      "Now these are the names of the children of Israel, which came into Egypt; every man and his household came with Jacob.",
+      "Reuben, Simeon, Levi, and Judah,",
+      "Issachar, Zebulun, and Benjamin,",
+      "Dan, and Naphtali, Gad, and Asher.",
+      "And all the souls that came out of the loins of Jacob were seventy souls: for Joseph was in Egypt already.",
+      "And Joseph died, and all his brethren, and all that generation.",
+      "And the children of Israel were fruitful, and increased abundantly, and multiplied, and waxed exceeding mighty; and the land was filled with them.",
+    ]},
+  { id: "lev", name: "Leviticus", abbr: "Lev", testament: "OT", group: "Pentateuch",
+    chapters: 27,
+    verses: [
+      "And the Lord called unto Moses, and spake unto him out of the tabernacle of the congregation, saying,",
+      "Speak unto the children of Israel, and say unto them, If any man of you bring an offering unto the Lord, ye shall bring your offering of the cattle, even of the herd, and of the flock.",
+      "If his offering be a burnt sacrifice of the herd, let him offer a male without blemish: he shall offer it of his own voluntary will at the door of the tabernacle of the congregation before the Lord.",
+    ]},
+  { id: "num", name: "Numbers", abbr: "Num", testament: "OT", group: "Pentateuch",
+    chapters: 36,
+    verses: [
+      "And the Lord spake unto Moses in the wilderness of Sinai, in the tabernacle of the congregation, on the first day of the second month, in the second year after they were come out of the land of Egypt, saying,",
+      "Take ye the sum of all the congregation of the children of Israel, after their families, by the house of their fathers, with the number of their names, every male by their polls;",
+    ]},
+  { id: "deu", name: "Deuteronomy", abbr: "Deut", testament: "OT", group: "Pentateuch",
+    chapters: 34,
+    verses: [
+      "These be the words which Moses spake unto all Israel on this side Jordan in the wilderness, in the plain over against the Red sea, between Paran, and Tophel, and Laban, and Hazeroth, and Dizahab.",
+      "(There are eleven days' journey from Horeb by the way of mount Seir unto Kadeshbarnea.)",
+    ]},
+  { id: "jos", name: "Joshua", abbr: "Josh", testament: "OT", group: "History",
+    chapters: 24,
+    verses: [
+      "Now after the death of Moses the servant of the Lord it came to pass, that the Lord spake unto Joshua the son of Nun, Moses' minister, saying,",
+      "Moses my servant is dead; now therefore arise, go over this Jordan, thou, and all this people, unto the land which I do give to them, even to the children of Israel.",
+    ]},
+  { id: "jdg", name: "Judges", abbr: "Jdg", testament: "OT", group: "History",
+    chapters: 21,
+    verses: [
+      "Now after the death of Joshua it came to pass, that the children of Israel asked the Lord, saying, Who shall go up for us against the Canaanites first, to fight against them?",
+      "And the Lord said, Judah shall go up: behold, I have delivered the land into his hand.",
+    ]},
+  { id: "rut", name: "Ruth", abbr: "Rth", testament: "OT", group: "History",
+    chapters: 4,
+    verses: [
+      "Now it came to pass in the days when the judges ruled, that there was a famine in the land. And a certain man of Bethlehemjudah went to sojourn in the country of Moab, he, and his wife, and his two sons.",
+      "And the name of the man was Elimelech, and the name of his wife Naomi, and the name of his two sons Mahlon and Chilion, Ephrathites of Bethlehemjudah. And they came into the country of Moab, and continued there.",
+    ]},
+  { id: "1sa", name: "1 Samuel", abbr: "1Sa", testament: "OT", group: "History",
+    chapters: 31,
+    verses: [
+      "Now there was a certain man of Ramathaimzophim, of mount Ephraim, and his name was Elkanah, the son of Jeroham, the son of Elihu, the son of Tohu, the son of Zuph, an Ephrathite:",
+      "And he had two wives; the name of the one was Hannah, and the name of the other Peninnah: and Peninnah had children, but Hannah had no children.",
+    ]},
+  { id: "2sa", name: "2 Samuel", abbr: "2Sa", testament: "OT", group: "History",
+    chapters: 24,
+    verses: [
+      "Now it came to pass after the death of Saul, when David was returned from the slaughter of the Amalekites, and David had abode two days in Ziklag;",
+      "It came even to pass on the third day, that, behold, a man came out of the camp from Saul with his clothes rent, and earth upon his head: and so it was, when he came to David, that he fell to the earth, and did obeisance.",
+    ]},
+  { id: "1ki", name: "1 Kings", abbr: "1Ki", testament: "OT", group: "History",
+    chapters: 22,
+    verses: [
+      "Now king David was old and stricken in years; and they covered him with clothes, but he gat no heat.",
+      "Wherefore his servants said unto him, Let there be sought for my lord the king a young virgin: and let her stand before the king, and let her cherish him, and let her lie in thy bosom, that my lord the king may get heat.",
+    ]},
+  { id: "2ki", name: "2 Kings", abbr: "2Ki", testament: "OT", group: "History",
+    chapters: 25,
+    verses: [
+      "Then Moab rebelled against Israel after the death of Ahab.",
+      "And Ahaziah fell down through a lattice in his upper chamber that was in Samaria, and was sick: and he sent messengers, and said unto them, Go, enquire of Baalzebub the god of Ekron whether I shall recover of this disease.",
+    ]},
+  { id: "1ch", name: "1 Chronicles", abbr: "1Ch", testament: "OT", group: "History",
+    chapters: 29,
+    verses: [
+      "Adam, Sheth, Enosh,",
+      "Kenan, Mahalaleel, Jered,",
+      "Henoch, Methuselah, Lamech,",
+      "Noah, Shem, Ham, and Japheth.",
+    ]},
+  { id: "2ch", name: "2 Chronicles", abbr: "2Ch", testament: "OT", group: "History",
+    chapters: 36,
+    verses: [
+      "And Solomon the son of David was strengthened in his kingdom, and the Lord his God was with him, and magnified him exceedingly.",
+      "Then Solomon spake unto all Israel, to the captains of thousands and of hundreds, and to the judges, and to every governor in all Israel, the chief of the fathers.",
+    ]},
+  { id: "ezr", name: "Ezra", abbr: "Ezr", testament: "OT", group: "History",
+    chapters: 10,
+    verses: [
+      "Now in the first year of Cyrus king of Persia, that the word of the Lord by the mouth of Jeremiah might be fulfilled, the Lord stirred up the spirit of Cyrus king of Persia, that he made a proclamation throughout all his kingdom, and put it also in writing, saying,",
+      "Thus saith Cyrus king of Persia, The Lord God of heaven hath given me all the kingdoms of the earth; and he hath charged me to build him an house at Jerusalem, which is in Judah.",
+    ]},
+  { id: "neh", name: "Nehemiah", abbr: "Neh", testament: "OT", group: "History",
+    chapters: 13,
+    verses: [
+      "The words of Nehemiah the son of Hachaliah. And it came to pass in the month Chisleu, in the twentieth year, as I was in Shushan the palace,",
+      "That Hanani, one of my brethren, came, he and certain men of Judah; and I asked them concerning the Jews that had escaped, which were left of the captivity, and concerning Jerusalem.",
+    ]},
+  { id: "est", name: "Esther", abbr: "Est", testament: "OT", group: "History",
+    chapters: 10,
+    verses: [
+      "Now it came to pass in the days of Ahasuerus, (this is Ahasuerus which reigned, from India even unto Ethiopia, over an hundred and seven and twenty provinces:)",
+      "That in those days, when the king Ahasuerus sat on the throne of his kingdom, which was in Shushan the palace,",
+    ]},
+  { id: "job", name: "Job", abbr: "Job", testament: "OT", group: "Wisdom",
+    chapters: 42,
+    verses: [
+      "There was a man in the land of Uz, whose name was Job; and that man was perfect and upright, and one that feared God, and eschewed evil.",
+      "And there were born unto him seven sons and three daughters.",
+      "His substance also was seven thousand sheep, and three thousand camels, and five hundred yoke of oxen, and five hundred she asses, and a very great household; so that this man was the greatest of all the men of the east.",
+    ]},
+  { id: "psa", name: "Psalms", abbr: "Ps", testament: "OT", group: "Wisdom",
+    chapters: 150,
+    verses: [
+      "Blessed is the man that walketh not in the counsel of the ungodly, nor standeth in the way of sinners, nor sitteth in the seat of the scornful.",
+      "But his delight is in the law of the Lord; and in his law doth he meditate day and night.",
+      "And he shall be like a tree planted by the rivers of water, that bringeth forth his fruit in his season; his leaf also shall not wither; and whatsoever he doeth shall prosper.",
+    ]},
+  { id: "pro", name: "Proverbs", abbr: "Pr", testament: "OT", group: "Wisdom",
+    chapters: 31,
+    verses: [
+      "The proverbs of Solomon the son of David, king of Israel;",
+      "To know wisdom and instruction; to perceive the words of understanding;",
+      "To receive the instruction of wisdom, justice, and judgment, and equity;",
+      "To give subtilty to the simple, to the young man knowledge and discretion.",
+    ]},
+  { id: "ecc", name: "Ecclesiastes", abbr: "Ecc", testament: "OT", group: "Wisdom",
+    chapters: 12,
+    verses: [
+      "The words of the Preacher, the son of David, king in Jerusalem.",
+      "Vanity of vanities, saith the Preacher, vanity of vanities; all is vanity.",
+      "What profit hath a man of all his labour which he taketh under the sun?",
+    ]},
+  { id: "sng", name: "Song of Solomon", abbr: "Sng", testament: "OT", group: "Wisdom",
+    chapters: 8,
+    verses: [
+      "The song of songs, which is Solomon's.",
+      "Let him kiss me with the kisses of his mouth: for thy love is better than wine.",
+      "Because of the savour of thy good ointments thy name is as ointment poured forth, therefore do the virgins love thee.",
+    ]},
+  { id: "isa", name: "Isaiah", abbr: "Isa", testament: "OT", group: "Major Prophets",
+    chapters: 66,
+    verses: [
+      "The vision of Isaiah the son of Amoz, which he saw concerning Judah and Jerusalem in the days of Uzziah, Jotham, Ahaz, and Hezekiah, kings of Judah.",
+      "Hear, O heavens, and give ear, O earth: for the Lord hath spoken, I have nourished and brought up children, and they have rebelled against me.",
+    ]},
+  { id: "jer", name: "Jeremiah", abbr: "Jer", testament: "OT", group: "Major Prophets",
+    chapters: 52,
+    verses: [
+      "The words of Jeremiah the son of Hilkiah, of the priests that were in Anathoth in the land of Benjamin:",
+      "To whom the word of the Lord came in the days of Josiah the son of Amon king of Judah, in the thirteenth year of his reign.",
+    ]},
+  { id: "lam", name: "Lamentations", abbr: "Lam", testament: "OT", group: "Major Prophets",
+    chapters: 5,
+    verses: [
+      "How doth the city sit solitary, that was full of people! how is she become as a widow! she that was great among the nations, and princess among the provinces, how is she become tributary!",
+      "She weepeth sore in the night, and her tears are on her cheeks: among all her lovers she hath none to comfort her: all her friends have dealt treacherously with her, they are become her enemies.",
+    ]},
+  { id: "ezk", name: "Ezekiel", abbr: "Ezk", testament: "OT", group: "Major Prophets",
+    chapters: 48,
+    verses: [
+      "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day of the month, as I was among the captives by the river of Chebar, that the heavens were opened, and I saw visions of God.",
+      "In the fifth day of the month, which was the fifth year of king Jehoiachin's captivity,",
+    ]},
+  { id: "dan", name: "Daniel", abbr: "Dan", testament: "OT", group: "Major Prophets",
+    chapters: 12,
+    verses: [
+      "In the third year of the reign of Jehoiakim king of Judah came Nebuchadnezzar king of Babylon unto Jerusalem, and besieged it.",
+      "And the Lord gave Jehoiakim king of Judah into his hand, with part of the vessels of the house of God: which he carried into the land of Shinar to the house of his god; and he brought the vessels into the treasure house of his god.",
+    ]},
+  { id: "hos", name: "Hosea", abbr: "Hos", testament: "OT", group: "Minor Prophets",
+    chapters: 14,
+    verses: [
+      "The word of the Lord that came unto Hosea, the son of Beeri, in the days of Uzziah, Jotham, Ahaz, and Hezekiah, kings of Judah, and in the days of Jeroboam the son of Joash, king of Israel.",
+      "The beginning of the word of the Lord by Hosea. And the Lord said to Hosea, Go, take unto thee a wife of whoredoms and children of whoredoms: for the land hath committed great whoredom, departing from the Lord.",
+    ]},
+  { id: "joe", name: "Joel", abbr: "Joe", testament: "OT", group: "Minor Prophets",
+    chapters: 3,
+    verses: [
+      "The word of the Lord that came to Joel the son of Pethuel.",
+      "Hear this, ye old men, and give ear, all ye inhabitants of the land. Hath this been in your days, or even in the days of your fathers?",
+    ]},
+  { id: "amo", name: "Amos", abbr: "Am", testament: "OT", group: "Minor Prophets",
+    chapters: 9,
+    verses: [
+      "The words of Amos, who was among the herdmen of Tekoa, which he saw concerning Israel in the days of Uzziah king of Judah, and in the days of Jeroboam the son of Joash king of Israel, two years before the earthquake.",
+      "And he said, The Lord will roar from Zion, and utter his voice from Jerusalem; and the habitations of the shepherds shall mourn, and the top of Carmel shall wither.",
+    ]},
+  { id: "oba", name: "Obadiah", abbr: "Oba", testament: "OT", group: "Minor Prophets",
+    chapters: 1,
+    verses: [
+      "The vision of Obadiah. Thus saith the Lord God concerning Edom; We have heard a rumour from the Lord, and an ambassador is sent among the heathen, Arise ye, and let us rise up against her in battle.",
+      "Behold, I have made thee small among the heathen: thou art greatly despised.",
+    ]},
+  { id: "jon", name: "Jonah", abbr: "Jon", testament: "OT", group: "Minor Prophets",
+    chapters: 4,
+    verses: [
+      "Now the word of the Lord came unto Jonah the son of Amittai, saying,",
+      "Arise, go to Nineveh, that great city, and cry against it; for their wickedness is come up before me.",
+      "But Jonah rose up to flee unto Tarshish from the presence of the Lord, and went down to Joppa; and he found a ship going to Tarshish: so he paid the fare thereof, and went down into it, to go with them unto Tarshish from the presence of the Lord.",
+    ]},
+  { id: "mic", name: "Micah", abbr: "Mic", testament: "OT", group: "Minor Prophets",
+    chapters: 7,
+    verses: [
+      "The word of the Lord that came to Micah the Morasthite in the days of Jotham, Ahaz, and Hezekiah, kings of Judah, which he saw concerning Samaria and Jerusalem.",
+      "Hear, all ye people; hearken, O earth, and all that therein is: and let the Lord God be witness against you, the Lord from his holy temple.",
+    ]},
+  { id: "nah", name: "Nahum", abbr: "Nah", testament: "OT", group: "Minor Prophets",
+    chapters: 3,
+    verses: [
+      "The burden of Nineveh. The book of the vision of Nahum the Elkoshite.",
+      "God is jealous, and the Lord revengeth; the Lord revengeth, and is furious; the Lord will take vengeance on his adversaries, and he reserveth wrath for his enemies.",
+    ]},
+  { id: "hab", name: "Habakkuk", abbr: "Hab", testament: "OT", group: "Minor Prophets",
+    chapters: 3,
+    verses: [
+      "The burden which Habakkuk the prophet did see.",
+      "O Lord, how long shall I cry, and thou wilt not hear! even cry out unto thee of violence, and thou wilt not save!",
+    ]},
+  { id: "zep", name: "Zephaniah", abbr: "Zep", testament: "OT", group: "Minor Prophets",
+    chapters: 3,
+    verses: [
+      "The word of the Lord which came unto Zephaniah the son of Cushi, the son of Gedaliah, the son of Amariah, the son of Hizkiah, in the days of Josiah the son of Amon, king of Judah.",
+      "I will utterly consume all things from off the land, saith the Lord.",
+    ]},
+  { id: "hag", name: "Haggai", abbr: "Hag", testament: "OT", group: "Minor Prophets",
+    chapters: 2,
+    verses: [
+      "In the second year of Darius the king, in the sixth month, in the first day of the month, came the word of the Lord by Haggai the prophet unto Zerubbabel the son of Shealtiel, governor of Judah, and to Joshua the son of Josedech, the high priest, saying,",
+      "Thus speaketh the Lord of hosts, saying, This people say, The time is not come, the time that the Lord's house should be built.",
+    ]},
+  { id: "zec", name: "Zechariah", abbr: "Zec", testament: "OT", group: "Minor Prophets",
+    chapters: 14,
+    verses: [
+      "In the eighth month, in the second year of Darius, came the word of the Lord unto Zechariah, the son of Berechiah, the son of Iddo the prophet, saying,",
+      "The Lord hath been sore displeased with your fathers.",
+    ]},
+  { id: "mal", name: "Malachi", abbr: "Mal", testament: "OT", group: "Minor Prophets",
+    chapters: 4,
+    verses: [
+      "The burden of the word of the Lord to Israel by Malachi.",
+      "I have loved you, saith the Lord. Yet ye say, Wherein hast thou loved us? Was not Esau Jacob's brother? saith the Lord: yet I loved Jacob,",
+    ]},
+  // ============ NEW TESTAMENT ============
+  { id: "mat", name: "Matthew", abbr: "Mt", testament: "NT", group: "Gospels",
+    chapters: 28,
+    verses: [
+      "The book of the generation of Jesus Christ, the son of David, the son of Abraham.",
+      "Abraham begat Isaac; and Isaac begat Jacob; and Jacob begat Judas and his brethren;",
+      "And Judas begat Phares and Zara of Thamar; and Phares begat Esrom; and Esrom begat Aram;",
+    ]},
+  { id: "mrk", name: "Mark", abbr: "Mk", testament: "NT", group: "Gospels",
+    chapters: 16,
+    verses: [
+      "The beginning of the gospel of Jesus Christ, the Son of God;",
+      "As it is written in the prophets, Behold, I send my messenger before thy face, which shall prepare thy way before thee.",
+      "The voice of one crying in the wilderness, Prepare ye the way of the Lord, make his paths straight.",
+    ]},
+  { id: "luk", name: "Luke", abbr: "Lk", testament: "NT", group: "Gospels",
+    chapters: 24,
+    verses: [
+      "Forasmuch as many have taken in hand to set forth in order a declaration of those things which are most surely believed among us,",
+      "Even as they delivered them unto us, which from the beginning were eyewitnesses, and ministers of the word;",
+      "It seemed good to me also, having had perfect understanding of all things from the very first, to write unto thee in order, most excellent Theophilus,",
+    ]},
+  { id: "jhn", name: "John", abbr: "Jn", testament: "NT", group: "Gospels",
+    chapters: 21,
+    verses: [
+      "In the beginning was the Word, and the Word was with God, and the Word was God.",
+      "The same was in the beginning with God.",
+      "All things were made by him; and without him was not any thing made that was made.",
+      "In him was life; and the life was the light of men.",
+      "And the light shineth in darkness; and the darkness comprehended it not.",
+    ]},
+  { id: "act", name: "Acts", abbr: "Act", testament: "NT", group: "History",
+    chapters: 28,
+    verses: [
+      "The former treatise have I made, O Theophilus, of all that Jesus began both to do and teach,",
+      "Until the day in which he was taken up, after that he through the Holy Ghost had given commandments unto the apostles whom he had chosen:",
+    ]},
+  { id: "rom", name: "Romans", abbr: "Rom", testament: "NT", group: "Epistles",
+    chapters: 16,
+    verses: [
+      "Paul, a servant of Jesus Christ, called to be an apostle, separated unto the gospel of God,",
+      "(Which he had promised afore by his prophets in the holy scriptures,)",
+      "Concerning his Son Jesus Christ our Lord, which was made of the seed of David according to the flesh;",
+    ]},
+  { id: "1co", name: "1 Corinthians", abbr: "1Co", testament: "NT", group: "Epistles",
+    chapters: 16,
+    verses: [
+      "Paul, called to be an apostle of Jesus Christ through the will of God, and Sosthenes our brother,",
+      "Unto the church of God which is at Corinth, to them that are sanctified in Christ Jesus, called to be saints, with all that in every place call upon the name of Jesus Christ our Lord, both theirs and ours:",
+    ]},
+  { id: "2co", name: "2 Corinthians", abbr: "2Co", testament: "NT", group: "Epistles",
+    chapters: 13,
+    verses: [
+      "Paul, an apostle of Jesus Christ by the will of God, and Timothy our brother, unto the church of God which is at Corinth, with all the saints which are in all Achaia:",
+      "Grace be to you and peace from God our Father, and from the Lord Jesus Christ.",
+    ]},
+  { id: "gal", name: "Galatians", abbr: "Gal", testament: "NT", group: "Epistles",
+    chapters: 6,
+    verses: [
+      "Paul, an apostle, (not of men, neither by man, but by Jesus Christ, and God the Father, who raised him from the dead;)",
+      "And all the brethren which are with me, unto the churches of Galatia:",
+    ]},
+  { id: "eph", name: "Ephesians", abbr: "Eph", testament: "NT", group: "Epistles",
+    chapters: 6,
+    verses: [
+      "Paul, an apostle of Jesus Christ by the will of God, to the saints which are at Ephesus, and to the faithful in Christ Jesus:",
+      "Grace be to you, and peace, from God our Father, and from the Lord Jesus Christ.",
+    ]},
+  { id: "php", name: "Philippians", abbr: "Phil", testament: "NT", group: "Epistles",
+    chapters: 4,
+    verses: [
+      "Paul and Timotheus, the servants of Jesus Christ, to all the saints in Christ Jesus which are at Philippi, with the bishops and deacons:",
+      "Grace be unto you, and peace, from God our Father, and from the Lord Jesus Christ.",
+    ]},
+  { id: "col", name: "Colossians", abbr: "Col", testament: "NT", group: "Epistles",
+    chapters: 4,
+    verses: [
+      "Paul, an apostle of Jesus Christ by the will of God, and Timotheus our brother,",
+      "To the saints and faithful brethren in Christ which are at Colosse: Grace be unto you, and peace, from God our Father and the Lord Jesus Christ.",
+    ]},
+  { id: "1th", name: "1 Thessalonians", abbr: "1Th", testament: "NT", group: "Epistles",
+    chapters: 5,
+    verses: [
+      "Paul, and Silvanus, and Timotheus, unto the church of the Thessalonians which is in God the Father and in the Lord Jesus Christ: Grace be unto you, and peace, from God our Father, and the Lord Jesus Christ.",
+      "We give thanks to God always for you all, making mention of you in our prayers;",
+    ]},
+  { id: "2th", name: "2 Thessalonians", abbr: "2Th", testament: "NT", group: "Epistles",
+    chapters: 3,
+    verses: [
+      "Paul, and Silvanus, and Timotheus, unto the church of the Thessalonians in God our Father and the Lord Jesus Christ:",
+      "Grace unto you, and peace, from God our Father and the Lord Jesus Christ.",
+    ]},
+  { id: "1ti", name: "1 Timothy", abbr: "1Ti", testament: "NT", group: "Epistles",
+    chapters: 6,
+    verses: [
+      "Paul, an apostle of Jesus Christ by the commandment of God our Saviour, and Lord Jesus Christ, which is our hope;",
+      "Unto Timothy, my own son in the faith: Grace, mercy, and peace, from God our Father and Jesus Christ our Lord.",
+    ]},
+  { id: "2ti", name: "2 Timothy", abbr: "2Ti", testament: "NT", group: "Epistles",
+    chapters: 4,
+    verses: [
+      "Paul, an apostle of Jesus Christ by the will of God, according to the promise of life which is in Christ Jesus,",
+      "To Timothy, my dearly beloved son: Grace, mercy, and peace, from God the Father and Christ Jesus our Lord.",
+    ]},
+  { id: "tit", name: "Titus", abbr: "Tit", testament: "NT", group: "Epistles",
+    chapters: 3,
+    verses: [
+      "Paul, a servant of God, and an apostle of Jesus Christ, according to the faith of God's elect, and the acknowledging of the truth which is after godliness;",
+      "In hope of eternal life, which God, that cannot lie, promised before the world began;",
+    ]},
+  { id: "phm", name: "Philemon", abbr: "Phm", testament: "NT", group: "Epistles",
+    chapters: 1,
+    verses: [
+      "Paul, a prisoner of Jesus Christ, and Timothy our brother, unto Philemon our dearly beloved, and fellowservant,",
+      "And to our beloved Apphia, and Archippus our fellowsoldier, and to the church in thy house:",
+    ]},
+  { id: "heb", name: "Hebrews", abbr: "Heb", testament: "NT", group: "Epistles",
+    chapters: 13,
+    verses: [
+      "God, who at sundry times and in divers manners spake in time past unto the fathers by the prophets,",
+      "Hath in these last days spoken unto us by his Son, whom he hath appointed heir of all things, by whom also he made the worlds;",
+    ]},
+  { id: "jas", name: "James", abbr: "Jas", testament: "NT", group: "Epistles",
+    chapters: 5,
+    verses: [
+      "James, a servant of God and of the Lord Jesus Christ, to the twelve tribes which are scattered abroad, greeting.",
+      "My brethren, count it all joy when ye fall into divers temptations;",
+      "Knowing this, that the trying of your faith worketh patience.",
+    ]},
+  { id: "1pe", name: "1 Peter", abbr: "1Pe", testament: "NT", group: "Epistles",
+    chapters: 5,
+    verses: [
+      "Peter, an apostle of Jesus Christ, to the strangers scattered throughout Pontus, Galatia, Cappadocia, Asia, and Bithynia,",
+      "Elect according to the foreknowledge of God the Father, through sanctification of the Spirit, unto obedience and sprinkling of the blood of Jesus Christ: Grace unto you, and peace, be multiplied.",
+    ]},
+  { id: "2pe", name: "2 Peter", abbr: "2Pe", testament: "NT", group: "Epistles",
+    chapters: 3,
+    verses: [
+      "Simon Peter, a servant and an apostle of Jesus Christ, to them that have obtained like precious faith with us through the righteousness of God and our Saviour Jesus Christ:",
+      "Grace and peace be multiplied unto you through the knowledge of God, and of Jesus our Lord,",
+    ]},
+  { id: "1jn", name: "1 John", abbr: "1Jn", testament: "NT", group: "Epistles",
+    chapters: 5,
+    verses: [
+      "That which was from the beginning, which we have heard, which we have seen with our eyes, which we have looked upon, and our hands have handled, of the Word of life;",
+      "(For the life was manifested, and we have seen it, and bear witness, and shew unto you that eternal life, which was with the Father, and was manifested unto us;)",
+    ]},
+  { id: "2jn", name: "2 John", abbr: "2Jn", testament: "NT", group: "Epistles",
+    chapters: 1,
+    verses: [
+      "The elder unto the elect lady and her children, whom I love in the truth; and not I only, but also all they that have known the truth;",
+      "For the truth's sake, which dwelleth in us, and shall be with us for ever.",
+    ]},
+  { id: "3jn", name: "3 John", abbr: "3Jn", testament: "NT", group: "Epistles",
+    chapters: 1,
+    verses: [
+      "The elder unto the wellbeloved Gaius, whom I love in the truth.",
+      "Beloved, I wish above all things that thou mayest prosper and be in health, even as thy soul prospereth.",
+    ]},
+  { id: "jud", name: "Jude", abbr: "Jud", testament: "NT", group: "Epistles",
+    chapters: 1,
+    verses: [
+      "Jude, the servant of Jesus Christ, and brother of James, to them that are sanctified by God the Father, and preserved in Jesus Christ, and called:",
+      "Mercy unto you, and peace, and love, be multiplied.",
+    ]},
+  { id: "rev", name: "Revelation", abbr: "Rev", testament: "NT", group: "Apocalyptic",
+    chapters: 22,
+    verses: [
+      "The Revelation of Jesus Christ, which God gave unto him, to shew unto his servants things which must shortly come to pass; and he sent and signified it by his angel unto his servant John:",
+      "Who bare record of the word of God, and of the testimony of Jesus Christ, and of all things that he saw.",
+      "Blessed is he that readeth, and they that hear the words of this prophecy, and keep those things which are written therein: for the time is near.",
+    ]},
+];
+
+// Assign a sequential page number to each book (2 pages per book for spread layout)
+window.BIBLE_BOOKS.forEach((b, i) => {
+  b.index = i;
+  b.startPage = i * 2; // each book starts on an even page (left side of spread)
+});
+
+</script>
+<script type="text/babel">
+// Page content components
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+function TitleSpread() {
+  return (
+    <div className="title-plate" style={{ padding: 10 }}>
+      <div className="ornament">❦</div>
+      <div className="ornament-bar"></div>
+      <h1 style={{ fontSize: "1.75em", lineHeight: 1.15, margin: "6px 0" }}>The Holy Bible</h1>
+      <h2 style={{ fontSize: "0.65em", margin: "4px 0" }}>Containing the Old<br/>and New Testaments</h2>
+      <div className="ornament-bar"></div>
+      <div className="ornament" style={{ margin: "12px 0" }}>✠</div>
+      <h2 style={{ fontSize: "0.6em", marginTop: 6 }}>Translated out of<br/>the Original Tongues</h2>
+      <div className="imprint" style={{ marginTop: 18, fontSize: "0.62em" }}>
+        Appointed to be read in Churches<br/>
+        <span style={{ opacity: 0.6 }}>— Anno Domini MDCXI —</span>
+      </div>
+      <div className="ornament-bar" style={{ marginTop: 12 }}></div>
+    </div>
+  );
+}
+
+function TableOfContents({ testament, onPick, half }) {
+  const books = window.BIBLE_BOOKS.filter(b => b.testament === testament);
+  const grouped = {};
+  books.forEach(b => {
+    grouped[b.group] = grouped[b.group] || [];
+    grouped[b.group].push(b);
+  });
+  let groupEntries = Object.entries(grouped);
+  // Split OT into two pages: half 1 = Pentateuch/History; half 2 = Wisdom/Prophets
+  if (testament === "OT") {
+    if (half === 1) {
+      groupEntries = groupEntries.filter(([g]) => ["Pentateuch","History"].includes(g));
+    } else if (half === 2) {
+      groupEntries = groupEntries.filter(([g]) => ["Wisdom","Major Prophets","Minor Prophets"].includes(g));
+    }
+  }
+  // NT uses 2 columns (27 books)
+  const useColumns = testament === "NT";
+  const title = testament === "OT"
+    ? (half === 2 ? "Old Testament · continued" : "Books of the Old Testament")
+    : "Books of the New Testament";
+  return (
+    <div style={{ flex: 1, padding: "0 4px", fontSize: "0.85em", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div className="chapter-heading" style={{ marginTop: 0, marginBottom: 8, fontSize: "0.75em" }}>
+        {title}
+      </div>
+      <div style={{ flex: 1, columns: useColumns ? 2 : 1, columnGap: 18 }}>
+      {groupEntries.map(([group, items]) => (
+        <div key={group} style={{ marginBottom: 5, breakInside: "avoid" }}>
+          <div style={{
+            fontFamily: "'Cinzel', Georgia, serif",
+            fontSize: "0.6em",
+            letterSpacing: "0.3em",
+            color: "var(--ink-soft)",
+            textTransform: "uppercase",
+            marginBottom: 2,
+            borderBottom: "1px dotted rgba(100,70,30,0.3)",
+            paddingBottom: 2,
+          }}>{group}</div>
+          {items.map(b => (
+            <div key={b.id}
+              onClick={() => onPick(b)}
+              style={{
+                cursor: "pointer",
+                fontSize: "0.82em",
+                padding: "0 4px",
+                display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                lineHeight: 1.25,
+                borderRadius: 2,
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--rubric)"; e.currentTarget.style.background = "rgba(139,42,26,0.06)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = ""; e.currentTarget.style.background = ""; }}
+            >
+              <span style={{ flexShrink: 0 }}>{b.name}</span>
+              <span style={{ flex: 1, margin: "0 6px", borderBottom: "1px dotted rgba(100,70,30,0.4)", transform: "translateY(-3px)", minWidth: 18 }}></span>
+              <span style={{ color: "var(--ink-soft)", fontSize: "0.88em", flexShrink: 0 }}>
+                {b.index + 1}
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+      </div>
+    </div>
+  );
+}
+
+function TestamentDivider({ testament }) {
+  return (
+    <div className="title-plate">
+      <div className="ornament">✠ ❦ ✠</div>
+      <div className="ornament-bar"></div>
+      <h1 style={{ fontSize: "1.7em", marginTop: 20 }}>
+        {testament === "OT" ? "The Old" : "The New"}
+      </h1>
+      <h1 style={{ fontSize: "2em", color: "var(--rubric)", margin: "8px 0" }}>
+        Testament
+      </h1>
+      <div className="ornament-bar"></div>
+      <h2 style={{ fontSize: "0.7em", marginTop: 16, fontStyle: "italic", letterSpacing: "0.18em" }}>
+        {testament === "OT"
+          ? "In the beginning..."
+          : "The gospel of our Lord"}
+      </h2>
+      <div className="ornament" style={{ marginTop: 28 }}>✠</div>
+    </div>
+  );
+}
+
+function BookOpeningPage({ book }) {
+  const versesToShow = book.verses.slice(0, Math.ceil(book.verses.length / 2));
+  return (
+    <>
+      <div className="page-header">
+        <span>{book.testament === "OT" ? "Old Testament" : "New Testament"}</span>
+        <span>{book.group}</span>
+      </div>
+      <div className="book-title-heading">
+        {book.name}
+        <span className="flourish">❦ Chapter I ❦</span>
+      </div>
+      <div className="verses-scroll">
+        <p className="verses">
+          <span className="drop-cap">{versesToShow[0]?.[0] || "T"}</span>
+          {versesToShow.map((v, i) => (
+            <span className="verse" key={i}>
+              {i > 0 && <span className="verse-num">{i + 1}</span>}
+              {i === 0 ? v.slice(1) : v}
+              {" "}
+            </span>
+          ))}
+        </p>
+      </div>
+      <div className="page-footer">
+        <span style={{ letterSpacing: "0.25em" }}>— {book.abbr} · 1 —</span>
+      </div>
+    </>
+  );
+}
+
+function BookContinuedPage({ book }) {
+  const versesFromHalf = book.verses.slice(Math.ceil(book.verses.length / 2));
+  return (
+    <>
+      <div className="page-header">
+        <span>{book.name}</span>
+        <span>Chapter I</span>
+      </div>
+      <div className="verses-scroll">
+        <p className="verses">
+          {versesFromHalf.map((v, i) => {
+            const n = Math.ceil(book.verses.length / 2) + i + 1;
+            return (
+              <span className="verse" key={i}>
+                <span className="verse-num">{n}</span>
+                {v}{" "}
+              </span>
+            );
+          })}
+          <span style={{ color: "var(--ink-soft)", fontStyle: "italic", fontSize: "0.85em" }}>
+            {" "}⁂ continued through {book.chapters} chapter{book.chapters > 1 ? "s" : ""} ⁂
+          </span>
+        </p>
+      </div>
+      <div className="page-footer">
+        <span style={{ letterSpacing: "0.25em" }}>— {book.abbr} · 1 —</span>
+      </div>
+    </>
+  );
+}
+
+function PageContent({ pageIndex, onPickBook }) {
+  const TOC_PAGES = 4; // page 1 = OT half 1, page 2 = OT half 2, page 3 = NT
+  const TOTAL = TOC_PAGES + window.BIBLE_BOOKS.length * 2;
+  if (pageIndex < 0 || pageIndex >= TOTAL) {
+    return <div className="title-plate"><div className="ornament" style={{ fontSize: "1.2em", letterSpacing: "0.4em" }}>⁂ FINIS ⁂</div></div>;
+  }
+  if (pageIndex === 0) return <TitleSpread />;
+  if (pageIndex === 1) return <TableOfContents testament="OT" onPick={onPickBook} half={1} />;
+  if (pageIndex === 2) return <TableOfContents testament="OT" onPick={onPickBook} half={2} />;
+  if (pageIndex === 3) return <TableOfContents testament="NT" onPick={onPickBook} />;
+  const bookPageIndex = pageIndex - TOC_PAGES;
+  const bookIdx = Math.floor(bookPageIndex / 2);
+  const side = bookPageIndex % 2;
+  const book = window.BIBLE_BOOKS[bookIdx];
+  if (!book) return <div className="title-plate"><div className="ornament">⁂ FINIS ⁂</div></div>;
+  return side === 0
+    ? <BookOpeningPage book={book} />
+    : <BookContinuedPage book={book} />;
+}
+
+Object.assign(window, { PageContent, TitleSpread, TableOfContents, TestamentDivider, BookOpeningPage, BookContinuedPage });
+
+</script>
+<script type="text/babel">
+// Main book component with page-flip physics
+const { useState: uS, useEffect: uE, useRef: uR, useMemo: uM, useCallback: uC } = React;
+
+// Total page count: 4 fixed + 66 books * 2 = 136
+const TOTAL_PAGES = 4 + window.BIBLE_BOOKS.length * 2;
+
+function bookStartPage(book) {
+  return 4 + book.index * 2;
+}
+
+function Book({ tweaks }) {
+  const [current, setCurrent] = uS(() => {
+    const saved = parseInt(localStorage.getItem("bible-page") || "0", 10);
+    return isFinite(saved) && saved >= 0 && saved < TOTAL_PAGES ? (saved % 2 === 0 ? saved : saved - 1) : 0;
+  });
+  // Current is always the LEFT page of the open spread (even number)
+  const [flipping, setFlipping] = uS(null); // { direction: 'next'|'prev', progress: 0..1, manual?: bool }
+  const [riffle, setRiffle] = uS(null); // { from, to, progress, direction }
+  const [ribbonPage, setRibbonPage] = uS(() => {
+    const v = localStorage.getItem("bible-ribbon");
+    return v ? parseInt(v, 10) : 0;
+  });
+  const [ribbonDrag, setRibbonDrag] = uS(null);
+
+  const flipDurationMs = tweaks.flipSpeed;
+
+  uE(() => {
+    localStorage.setItem("bible-page", String(current));
+  }, [current]);
+  uE(() => {
+    localStorage.setItem("bible-ribbon", String(ribbonPage));
+  }, [ribbonPage]);
+
+  const flippingRef = uR(null);
+  const riffleRef = uR(null);
+
+  // ---------------- Single-page flip ----------------
+  const animateFlip = uC((direction, onDone) => {
+    if (flippingRef.current || riffleRef.current) return;
+    const start = performance.now();
+    flippingRef.current = { direction, progress: 0 };
+    setFlipping({ direction, progress: 0 });
+    const tick = () => {
+      const t = performance.now();
+      const p = Math.min(1, (t - start) / flipDurationMs);
+      const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      flippingRef.current = { direction, progress: eased };
+      setFlipping({ direction, progress: eased });
+      if (p < 1) setTimeout(tick, 16);
+      else {
+        flippingRef.current = null;
+        setFlipping(null);
+        if (direction === "next") setCurrent(c => Math.min(TOTAL_PAGES - 2, c + 2));
+        else setCurrent(c => Math.max(0, c - 2));
+        onDone && onDone();
+      }
+    };
+    setTimeout(tick, 16);
+  }, [flipDurationMs]);
+
+  // ---------------- Multi-page riffle (big jumps) ----------------
+  const animateRiffle = uC((fromPage, toPage) => {
+    if (flippingRef.current || riffleRef.current) return;
+    const direction = toPage > fromPage ? "next" : "prev";
+    const sheetCount = Math.min(18, Math.max(4, Math.floor(Math.abs(toPage - fromPage) / 4)));
+    const duration = Math.min(1800, 700 + sheetCount * 40) * (flipDurationMs / 900);
+    const start = performance.now();
+    const initial = { from: fromPage, to: toPage, progress: 0, direction, sheetCount, duration };
+    riffleRef.current = initial;
+    setRiffle(initial);
+    const tick = () => {
+      const t = performance.now();
+      const p = Math.min(1, (t - start) / duration);
+      const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      const next = { ...initial, progress: eased };
+      riffleRef.current = next;
+      setRiffle(next);
+      if (p < 1) setTimeout(tick, 16);
+      else {
+        riffleRef.current = null;
+        setRiffle(null);
+        setCurrent(toPage % 2 === 0 ? toPage : toPage - 1);
+      }
+    };
+    setTimeout(tick, 16);
+  }, [flipDurationMs]);
+
+  const goToBook = uC((book) => {
+    const target = bookStartPage(book);
+    if (Math.abs(target - current) <= 2) {
+      if (target === current) return;
+      animateFlip(target > current ? "next" : "prev");
+    } else {
+      animateRiffle(current, target);
+    }
+  }, [current, animateFlip, animateRiffle]);
+
+  const nextSpread = uC(() => {
+    if (current + 2 < TOTAL_PAGES) animateFlip("next");
+  }, [current, animateFlip]);
+  const prevSpread = uC(() => {
+    if (current > 0) animateFlip("prev");
+  }, [current, animateFlip]);
+
+  uE(() => {
+    const onKey = (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); nextSpread(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); prevSpread(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [nextSpread, prevSpread]);
+
+  // ---------------- Manual corner drag ----------------
+  const stageRef = uR(null);
+  const [dragState, setDragState] = uS(null);
+
+  const onCornerDown = uC((direction) => (e) => {
+    if (flipping || riffle) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    setDragState({ direction, progress: 0, startX });
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      // For next: dragging left (negative dx) flips forward
+      // For prev: dragging right (positive dx) flips back
+      const raw = direction === "next" ? -dx / 400 : dx / 400;
+      const progress = Math.max(0, Math.min(1, raw));
+      setDragState({ direction, progress, startX });
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      setDragState(ds => {
+        if (!ds) return null;
+        if (ds.progress > 0.4) {
+          // complete
+          const from = ds.progress;
+          const start = performance.now();
+          const dur = (1 - from) * flipDurationMs;
+          const tick = () => {
+            const t = performance.now();
+            const p = Math.min(1, (t - start) / Math.max(100, dur));
+            const eased = p < 0.5 ? 4*p*p*p : 1 - Math.pow(-2*p+2, 3)/2;
+            const prog = from + (1 - from) * eased;
+            setDragState({ ...ds, progress: prog });
+            if (p < 1) setTimeout(tick, 16);
+            else {
+              setDragState(null);
+              if (ds.direction === "next") setCurrent(c => Math.min(TOTAL_PAGES - 2, c + 2));
+              else setCurrent(c => Math.max(0, c - 2));
+            }
+          };
+          setTimeout(tick, 16);
+          return ds;
+        } else {
+          // snap back
+          const from = ds.progress;
+          const start = performance.now();
+          const dur = from * flipDurationMs * 0.6;
+          const tick = () => {
+            const t = performance.now();
+            const p = Math.min(1, (t - start) / Math.max(80, dur));
+            const eased = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
+            const prog = from * (1 - eased);
+            setDragState({ ...ds, progress: prog });
+            if (p < 1) setTimeout(tick, 16);
+            else setDragState(null);
+          };
+          setTimeout(tick, 16);
+          return ds;
+        }
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [flipping, riffle, flipDurationMs]);
+
+  // Combine programmatic flip + manual drag into a unified flip state
+  const activeFlip = flipping || dragState;
+
+  // ---------------- Ribbon drag ----------------
+  const onRibbonDown = uC((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    setRibbonDrag({ startY, offsetX: 0, placing: false });
+    const onMove = (ev) => {
+      const dx = ev.clientX - e.clientX;
+      const dy = ev.clientY - startY;
+      setRibbonDrag({ startY, offsetX: dx, offsetY: dy, placing: true });
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      // Drop = mark current page
+      setRibbonPage(current);
+      setRibbonDrag(null);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [current]);
+
+  const jumpToRibbon = uC(() => {
+    if (ribbonPage === current) return;
+    if (Math.abs(ribbonPage - current) <= 2) animateFlip(ribbonPage > current ? "next" : "prev");
+    else animateRiffle(current, ribbonPage);
+  }, [ribbonPage, current, animateFlip, animateRiffle]);
+
+  // Find current book (for highlighting tab)
+  const currentBook = uM(() => {
+    if (current < 4) return null;
+    const idx = Math.floor((current - 4) / 2);
+    return window.BIBLE_BOOKS[idx];
+  }, [current]);
+
+  // Helper: what's on the left/right page of the current spread
+  const leftIdx = current;
+  const rightIdx = current + 1;
+  // When flipping forward, the page being flipped is the right page of current spread (going to become left-back of next)
+  // and reveals a new right page underneath. We'll render as:
+  // - static left page (current left)
+  // - static right page of NEXT spread (destination), visible as we flip
+  // - flipping layer showing current right (front) -> next left (back)
+  let nextLeftIdx = current + 2;
+  let nextRightIdx = current + 3;
+  let prevLeftIdx = current - 2;
+  let prevRightIdx = current - 1;
+
+  return (
+    <>
+      <div className="stage" ref={stageRef}>
+        <div className="book-tilt">
+          <div className={`book cover-${tweaks.cover} paper-${tweaks.paper}`}
+            style={{
+              width: `calc(var(--page-w) * 2)`,
+              height: `var(--page-h)`,
+            }}>
+            <div className="book-base"></div>
+            <div className="page-edges"></div>
+
+            {/* ------------ STATIC LEFT PAGE ------------ */}
+            <div className="spread">
+              <div className="page left">
+                <div className="page-inner">
+                  <PageContent pageIndex={leftIdx} onPickBook={goToBook} />
+                </div>
+              </div>
+              {/* ------------ STATIC RIGHT PAGE (destination, under flipping) ------------ */}
+              <div className="page right">
+                <div className="page-inner">
+                  <PageContent
+                    pageIndex={activeFlip?.direction === "next" ? nextRightIdx : (activeFlip?.direction === "prev" ? prevRightIdx : rightIdx)}
+                    onPickBook={goToBook}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ------------ FLIPPING PAGE ------------ */}
+            {activeFlip && (() => {
+              const { direction, progress } = activeFlip;
+              // angle: 0 = flat (showing front) ; -180 = flipped over (showing back)
+              const angle = direction === "next"
+                ? -progress * 180
+                : 180 - progress * 180;
+              const frontIdx = direction === "next" ? rightIdx : prevLeftIdx;
+              const backIdx = direction === "next" ? nextLeftIdx : leftIdx;
+              const origin = direction === "next" ? "left center" : "right center";
+              const left = direction === "next" ? "50%" : `calc(50% - var(--page-w))`;
+              // Slight curl: add small rotation around y axis with a bend via scale? we'll use translateZ
+              const shadowOpacity = Math.sin(Math.PI * progress) * 0.8;
+              return (
+                <div className="flip-layer" style={{
+                  left,
+                  transformOrigin: origin,
+                  transform: `rotateY(${angle}deg) translateZ(${Math.sin(Math.PI * progress) * 8}px)`,
+                  transition: dragState ? "none" : undefined,
+                }}>
+                  <div className="flip-face front">
+                    <div className={`page ${direction === "next" ? "right" : "left"}`}>
+                      <div className="page-inner">
+                        <PageContent pageIndex={frontIdx} onPickBook={goToBook} />
+                      </div>
+                      {/* curl shadow on the front as it lifts */}
+                      <div className="curl-shadow" style={{
+                        opacity: progress < 0.5 ? progress * 1.2 : 0,
+                        background: direction === "next"
+                          ? `linear-gradient(-90deg, rgba(0,0,0,${0.35 * progress}), transparent 40%)`
+                          : `linear-gradient(90deg, rgba(0,0,0,${0.35 * progress}), transparent 40%)`,
+                      }}/>
+                    </div>
+                  </div>
+                  <div className="flip-face back">
+                    <div className={`page ${direction === "next" ? "left" : "right"}`}>
+                      <div className="page-inner">
+                        <PageContent pageIndex={backIdx} onPickBook={goToBook} />
+                      </div>
+                      <div className="curl-shadow" style={{
+                        opacity: progress > 0.5 ? (1 - progress) * 1.2 : 0,
+                        background: direction === "next"
+                          ? `linear-gradient(90deg, rgba(0,0,0,${0.35 * (1-progress)}), transparent 40%)`
+                          : `linear-gradient(-90deg, rgba(0,0,0,${0.35 * (1-progress)}), transparent 40%)`,
+                      }}/>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ------------ RIFFLE (multi-sheet) ------------ */}
+            {riffle && (() => {
+              const { progress, sheetCount, direction } = riffle;
+              const sheets = [];
+              for (let i = 0; i < sheetCount; i++) {
+                const delay = i / sheetCount * 0.5;
+                const localProgress = Math.max(0, Math.min(1, (progress - delay) / 0.5));
+                if (localProgress <= 0) continue;
+                const angle = direction === "next" ? -localProgress * 180 : 180 - localProgress * 180;
+                const z = Math.sin(Math.PI * localProgress) * 5;
+                const origin = direction === "next" ? "left center" : "right center";
+                const left = direction === "next" ? "50%" : `calc(50% - var(--page-w))`;
+                sheets.push(
+                  <div key={i} className="flip-layer" style={{
+                    left,
+                    transformOrigin: origin,
+                    transform: `rotateY(${angle}deg) translateZ(${z + i * 0.3}px)`,
+                    zIndex: 20 + i,
+                  }}>
+                    <div className="flip-face front">
+                      <div className={`page ${direction === "next" ? "right" : "left"}`} style={{ opacity: 0.95 }}>
+                        <div className="page-inner" style={{ padding: "20px 30px", opacity: 0.5 }}>
+                          <div style={{ height: "100%",
+                            background: "repeating-linear-gradient(0deg, rgba(50,30,10,0.12) 0 1.5px, transparent 1.5px 9px)",
+                          }}/>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flip-face back">
+                      <div className={`page ${direction === "next" ? "left" : "right"}`} style={{ opacity: 0.95 }}>
+                        <div className="page-inner" style={{ padding: "20px 30px", opacity: 0.5 }}>
+                          <div style={{ height: "100%",
+                            background: "repeating-linear-gradient(0deg, rgba(50,30,10,0.12) 0 1.5px, transparent 1.5px 9px)",
+                          }}/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return sheets;
+            })()}
+
+            <div className="gutter"></div>
+
+            {/* Corner drag hints */}
+            {!activeFlip && !riffle && current + 2 < TOTAL_PAGES && (
+              <div className="corner-hint" style={{ right: 0, bottom: 0 }}
+                onMouseDown={onCornerDown("next")}
+                title="Drag to flip forward"
+              />
+            )}
+            {!activeFlip && !riffle && current > 0 && (
+              <div className="corner-hint left-corner"
+                onMouseDown={onCornerDown("prev")}
+                title="Drag to flip back"
+              />
+            )}
+
+            {/* Ribbon bookmark - stuck in top center of book, falls to current/ribbon page */}
+            <Ribbon
+              ribbonPage={ribbonPage}
+              currentPage={current}
+              onDown={onRibbonDown}
+              dragging={!!ribbonDrag}
+              drag={ribbonDrag}
+              onClick={jumpToRibbon}
+            />
+
+            {/* Thumb-index tabs */}
+            <ThumbTabs
+              currentBook={currentBook}
+              onPick={goToBook}
+              disabled={!!activeFlip || !!riffle}
+            />
+
+          </div>
+        </div>
+      </div>
+
+      <NavBar
+        current={current}
+        totalPages={TOTAL_PAGES}
+        onPrev={prevSpread}
+        onNext={nextSpread}
+        onOpenTOC={() => animateRiffle(current, 2)}
+        currentBook={currentBook}
+        disabled={!!activeFlip || !!riffle}
+      />
+    </>
+  );
+}
+
+// ------------- Ribbon -------------
+function Ribbon({ ribbonPage, currentPage, onDown, dragging, drag, onClick }) {
+  // Ribbon sticks out of the top of the book between pages
+  // Its length extends based on distance from ribbonPage to current page
+  // For simplicity, the ribbon comes out of the top of the spine (center) and falls down
+  const isCurrent = ribbonPage === currentPage || Math.abs(ribbonPage - currentPage) < 2;
+  const length = 240 + Math.random() * 20;
+  // when dragging, follow cursor offset
+  const offsetX = drag?.offsetX || 0;
+  const offsetY = drag?.offsetY || 0;
+  const sway = dragging ? Math.min(20, Math.max(-20, offsetX * 0.1)) : 0;
+
+  return (
+    <div
+      className="ribbon"
+      onMouseDown={onDown}
+      onDoubleClick={onClick}
+      title={`Bookmark (page ${ribbonPage + 1}). Drag to reposition. Double-click to jump.`}
+      style={{
+        left: `calc(50% - 13px)`,
+        height: length,
+        transform: `rotate(${sway}deg) translate(${offsetX * 0.3}px, ${offsetY * 0.3}px)`,
+        transition: dragging ? "none" : "transform 400ms ease",
+        zIndex: 50,
+      }}
+    >
+      {isCurrent && (
+        <div style={{
+          position: "absolute",
+          top: 6, left: "50%", transform: "translateX(-50%)",
+          fontSize: 8, color: "rgba(255,220,180,0.5)",
+          fontFamily: "'Cinzel', serif", letterSpacing: "0.2em",
+        }}>⁂</div>
+      )}
+    </div>
+  );
+}
+
+// ------------- Thumb-index tabs (group tabs with flyout picker) -------------
+function ThumbTabs({ currentBook, onPick, disabled }) {
+  const [openGroup, setOpenGroup] = uS(null);
+  const GROUPS = [
+    { id: "Pentateuch", testament: "OT", label: "Pentateuch" },
+    { id: "History", testament: "OT", label: "History (OT)" },
+    { id: "Wisdom", testament: "OT", label: "Wisdom" },
+    { id: "Major Prophets", testament: "OT", label: "Major Prophets" },
+    { id: "Minor Prophets", testament: "OT", label: "Minor Prophets" },
+    { id: "Gospels", testament: "NT", label: "Gospels" },
+    { id: "History", testament: "NT", label: "History (NT)" },
+    { id: "Epistles", testament: "NT", label: "Epistles" },
+    { id: "Apocalyptic", testament: "NT", label: "Revelation" },
+  ];
+
+  return (
+    <div className="tabs right" onMouseLeave={() => setOpenGroup(null)}>
+      {GROUPS.map((g, i) => {
+        const isOT = g.testament === "OT";
+        const isCurrent = currentBook && currentBook.group === g.id && currentBook.testament === g.testament;
+        const books = window.BIBLE_BOOKS.filter(b => b.group === g.id && b.testament === g.testament);
+        const key = g.testament + ":" + g.id;
+        return (
+          <div
+            key={key}
+            className={`group-tab ${isOT ? "ot-group" : "nt-group"} ${isCurrent ? "current" : ""}`}
+            onMouseEnter={() => !disabled && setOpenGroup(key)}
+            onClick={() => {
+              if (disabled) return;
+              if (books[0]) onPick(books[0]);
+              setOpenGroup(null);
+            }}
+          >
+            {g.label}
+            {openGroup === key && (
+              <div className="flyout" onMouseLeave={() => setOpenGroup(null)} onClick={e => e.stopPropagation()}>
+                <div className="flyout-title">{g.label}</div>
+                {books.map(b => (
+                  <div key={b.id}
+                    className={`flyout-book ${currentBook?.id === b.id ? "current" : ""}`}
+                    onClick={() => { onPick(b); setOpenGroup(null); }}
+                  >
+                    <span>{b.name}</span>
+                    <span className="num">{b.chapters} ch</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ------------- Nav bar -------------
+function NavBar({ current, totalPages, onPrev, onNext, onOpenTOC, currentBook, disabled }) {
+  let label;
+  if (current === 0) label = "Frontispiece";
+  else if (current === 1 || current === 2) label = "Table of Contents";
+  else if (current === 3) label = "New Testament · Contents";
+  else if (currentBook) label = `${currentBook.name} · Ch. 1`;
+  else label = "—";
+  return (
+    <div className="nav-controls">
+      <button className="nav-btn" onClick={onPrev} disabled={disabled || current === 0}>‹</button>
+      <button className="nav-btn" onClick={onOpenTOC} disabled={disabled} title="Table of Contents" style={{ fontSize: 11 }}>✦</button>
+      <div className="nav-label">{label}</div>
+      <button className="nav-btn" onClick={onNext} disabled={disabled || current + 2 >= totalPages}>›</button>
+    </div>
+  );
+}
+
+Object.assign(window, { Book, Ribbon, ThumbTabs, NavBar, TOTAL_PAGES, bookStartPage });
+
+</script>
+<script type="text/babel">
+// App entry point
+const { useState: useAppState, useEffect: useAppEffect } = React;
+
+const DEFAULT_TWEAKS = /*EDITMODE-BEGIN*/{
+  "paper": "aged",
+  "cover": "brown",
+  "fontSize": 15,
+  "flipSpeed": 900
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweaks] = useAppState(() => {
+    const saved = localStorage.getItem("bible-tweaks");
+    return saved ? { ...DEFAULT_TWEAKS, ...JSON.parse(saved) } : DEFAULT_TWEAKS;
+  });
+  const [tweaksOpen, setTweaksOpen] = useAppState(false);
+
+  useAppEffect(() => {
+    localStorage.setItem("bible-tweaks", JSON.stringify(tweaks));
+    document.documentElement.style.setProperty("--font-size", tweaks.fontSize + "px");
+    document.documentElement.style.setProperty("--flip-speed", tweaks.flipSpeed + "ms");
+  }, [tweaks]);
+
+  // Responsive sizing
+  useAppEffect(() => {
+    const setSize = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Book will be ~2 * pageW wide; fit in 85% of viewport
+      const maxW = vw * 0.88;
+      const maxH = vh * 0.85;
+      // Page aspect ~ 1 : 1.4 (portrait)
+      let pageH = Math.min(maxH, maxW / 2 * 1.4);
+      let pageW = pageH / 1.4;
+      if (pageW * 2 > maxW) {
+        pageW = maxW / 2;
+        pageH = pageW * 1.4;
+      }
+      document.documentElement.style.setProperty("--page-w", pageW + "px");
+      document.documentElement.style.setProperty("--page-h", pageH + "px");
+    };
+    setSize();
+    window.addEventListener("resize", setSize);
+    return () => window.removeEventListener("resize", setSize);
+  }, []);
+
+  // Tweaks mode integration
+  useAppEffect(() => {
+    const onMsg = (e) => {
+      if (e.data?.type === "__activate_edit_mode") setTweaksOpen(true);
+      else if (e.data?.type === "__deactivate_edit_mode") setTweaksOpen(false);
+    };
+    window.addEventListener("message", onMsg);
+    window.parent.postMessage({ type: "__edit_mode_available" }, "*");
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
+  const updateTweak = (key, value) => {
+    const next = { ...tweaks, [key]: value };
+    setTweaks(next);
+    window.parent.postMessage({ type: "__edit_mode_set_keys", edits: next }, "*");
+  };
+
+  return (
+    <>
+      <div className="table-surface"></div>
+      <div className="candle-light"></div>
+
+      <div className="chrome">
+        <h1>The Holy Bible</h1>
+        <div className="sub">King James Version · 1611</div>
+      </div>
+
+      <Book tweaks={tweaks} />
+
+      {tweaksOpen && (
+        <div className="tweaks-panel">
+          <h3>Tweaks</h3>
+
+          <div className="tweak-row">
+            <label>Cover</label>
+            <div className="options">
+              {["brown", "burgundy", "black"].map(c => (
+                <button key={c}
+                  className={tweaks.cover === c ? "active" : ""}
+                  onClick={() => updateTweak("cover", c)}
+                >{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tweak-row">
+            <label>Paper</label>
+            <div className="tweak-swatches">
+              {[
+                { id: "aged", color: "#f2e8d0" },
+                { id: "cream", color: "#faf3de" },
+                { id: "linen", color: "#ede0c0" },
+                { id: "antique", color: "#e8d9b3" },
+              ].map(p => (
+                <div key={p.id}
+                  className={`tweak-swatch ${tweaks.paper === p.id ? "active" : ""}`}
+                  style={{ background: p.color, borderColor: tweaks.paper === p.id ? "var(--gold-hi)" : "transparent" }}
+                  onClick={() => updateTweak("paper", p.id)}
+                  title={p.id}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="tweak-row">
+            <label>Font Size · {tweaks.fontSize}px</label>
+            <input type="range" min="12" max="20" step="1"
+              value={tweaks.fontSize}
+              onChange={e => updateTweak("fontSize", parseInt(e.target.value, 10))}
+            />
+          </div>
+
+          <div className="tweak-row">
+            <label>Flip Speed · {tweaks.flipSpeed}ms</label>
+            <input type="range" min="300" max="1600" step="50"
+              value={tweaks.flipSpeed}
+              onChange={e => updateTweak("flipSpeed", parseInt(e.target.value, 10))}
+            />
+          </div>
+
+          <div style={{ marginTop: 16, paddingTop: 10, borderTop: "1px dotted var(--gold-dark)", fontSize: 9, opacity: 0.6, lineHeight: 1.6 }}>
+            <div>✦ Click a tab on the right edge to jump to a book</div>
+            <div>✦ Drag page corners to flip manually</div>
+            <div>✦ Drag the ribbon to place a bookmark</div>
+            <div>✦ Arrow keys navigate</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+</script>
 </body>
 </html>
