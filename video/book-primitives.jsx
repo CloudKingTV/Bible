@@ -281,24 +281,49 @@ const GROUP_BOOKS = {
 
 /* ===== Flipping page layer =====
    progress: 0 = flat (no flip), 1 = fully flipped.
-   direction: 'forward' (right→left) or 'backward' (left→right). */
+   direction: 'forward' (right→left) or 'backward' (left→right).
+   Upgraded to match the main app: translateZ lift, drop-shadow that peaks at
+   the midpoint, and front/back curl-shadow gradients so the leaf reads as
+   an airborne page rather than a thin vanishing slice. */
 function FlipLayer({ progress, direction = 'forward', front, back }) {
   if (progress <= 0.001) return null;
-  const angle = direction === 'forward' ? -progress * 180 : progress * 180;
   const reverse = direction === 'backward';
+  // Slight S-curve on the angle so the page sweeps quickly through 80-100° (the
+  // near-invisible zone) and lingers on the visible angles.
+  const ease = (t) => (t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2);
+  const swept = ease(progress);
+  const angle = reverse ? swept * 180 : -swept * 180;
+  const lift = Math.sin(Math.PI * progress);
+  const z = lift * 84;
+  // Tilt the flipping leaf so its face is never exactly perpendicular to the
+  // viewer at 90° rotateY — catches light at mid-flip.
+  const tiltX = lift * -8;
+  const shadowSide = reverse ? 1 : -1;
   return (
     <div
       className={`flip-layer ${reverse ? 'reverse' : ''}`}
       style={{
-        transform: `rotateY(${angle}deg)`,
-        boxShadow: `${reverse ? '-' : ''}${Math.sin(progress * Math.PI) * 20}px 0 30px rgba(0,0,0,${0.3 * Math.sin(progress * Math.PI)})`,
+        transform: `translateZ(${z}px) rotateY(${angle}deg) rotateX(${tiltX}deg)`,
+        filter: `drop-shadow(${shadowSide * 14 * lift}px ${18 * lift}px ${24 + 48 * lift}px rgba(0,0,0,${lift * 0.75}))`,
       }}
     >
       <div className={`flip-face front page ${reverse ? 'left' : 'right'}`}>
         {front}
+        <div className="curl-shadow" style={{
+          opacity: progress < 0.5 ? progress * 1.1 : 0,
+          background: reverse
+            ? `linear-gradient(90deg,  rgba(0,0,0,${0.45 * progress}) 0%, rgba(0,0,0,${0.15 * progress}) 40%, transparent 72%)`
+            : `linear-gradient(-90deg, rgba(0,0,0,${0.45 * progress}) 0%, rgba(0,0,0,${0.15 * progress}) 40%, transparent 72%)`,
+        }}/>
       </div>
       <div className={`flip-face back page ${reverse ? 'right' : 'left'}`}>
         {back}
+        <div className="curl-shadow" style={{
+          opacity: progress > 0.5 ? (1 - progress) * 1.1 : 0,
+          background: reverse
+            ? `linear-gradient(-90deg, rgba(0,0,0,${0.45 * (1-progress)}) 0%, rgba(0,0,0,${0.15 * (1-progress)}) 40%, transparent 72%)`
+            : `linear-gradient(90deg,  rgba(0,0,0,${0.45 * (1-progress)}) 0%, rgba(0,0,0,${0.15 * (1-progress)}) 40%, transparent 72%)`,
+        }}/>
       </div>
     </div>
   );
@@ -327,34 +352,46 @@ function CornerHint({ side = 'right', lift = 0 }) {
   return <div style={style} />;
 }
 
-/* ===== Pointing cursor ===== */
+/* ===== Pointing cursor =====
+   Rendered into the tilted book plane, so it lives in book-coord space.
+   Beefed up: soft gold halo + inner dark stroke so it reads against pages
+   and the leather cover at the small scales the canvas is rendered at. */
 function Cursor({ x, y, clicking = false, visible = true }) {
   if (!visible) return null;
   return (
     <div style={{
       position: 'absolute',
       left: x, top: y,
-      width: 22, height: 28,
+      width: 34, height: 42,
       pointerEvents: 'none',
       zIndex: 500,
-      transform: `scale(${clicking ? 0.85 : 1})`,
+      transform: `scale(${clicking ? 0.82 : 1})`,
       transition: 'transform 80ms',
-      filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.6))',
+      filter: 'drop-shadow(0 3px 5px rgba(0,0,0,0.7))',
     }}>
-      <svg viewBox="0 0 22 28" width="22" height="28">
+      {/* soft halo so the cursor pops against any background */}
+      <div style={{
+        position: 'absolute',
+        left: -10, top: -10,
+        width: 54, height: 54,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(255,220,150,0.35) 0%, rgba(255,220,150,0) 65%)',
+        pointerEvents: 'none',
+      }} />
+      <svg viewBox="0 0 22 28" width="34" height="42">
         <path
           d="M2 2 L2 22 L7 17 L10 25 L13 24 L10 16 L18 16 Z"
           fill="#fff8ea"
           stroke="#1a0f06"
-          strokeWidth="1.3"
+          strokeWidth="1.6"
           strokeLinejoin="round"
         />
       </svg>
       {clicking && (
         <div style={{
           position: 'absolute',
-          left: -8, top: -8,
-          width: 40, height: 40,
+          left: -12, top: -12,
+          width: 58, height: 58,
           borderRadius: '50%',
           border: '2px solid rgba(255,220,150,0.9)',
           animation: 'click-ring 0.5s ease-out',
