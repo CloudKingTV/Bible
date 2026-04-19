@@ -5,7 +5,7 @@ const DEFAULT_TWEAKS = /*EDITMODE-BEGIN*/{
   "paper": "aged",
   "cover": "brown",
   "fontSize": 15,
-  "flipSpeed": 900
+  "flipSpeed": 1100
 }/*EDITMODE-END*/;
 
 function App() {
@@ -127,7 +127,7 @@ function App() {
           <div style={{ marginTop: 16, paddingTop: 10, borderTop: "1px dotted var(--gold-dark)", fontSize: 9, opacity: 0.6, lineHeight: 1.6 }}>
             <div>✦ Click a tab on the right edge to jump to a book</div>
             <div>✦ Drag page corners to flip manually</div>
-            <div>✦ Drag the ribbon to place a bookmark</div>
+            <div>✦ Click the ribbon to jump to bookmark · drag to place it</div>
             <div>✦ Arrow keys navigate</div>
           </div>
         </div>

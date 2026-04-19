@@ -493,8 +493,8 @@ html, body {
 /* Flyout book picker */
 .flyout {
   position: absolute;
-  top: 0; bottom: 0;
-  left: calc(100% + 14px);
+  top: 0;
+  max-height: min(70vh, 520px);
   width: 220px;
   background: rgba(30, 15, 5, 0.96);
   border: 1px solid var(--gold-dark);
@@ -505,6 +505,18 @@ html, body {
   z-index: 60;
   color: #e8d5a8;
   backdrop-filter: blur(8px);
+}
+/* Touch the tab directly so the hover can cross without a dead zone. A small
+   invisible bridge on the near side gives the pointer some slack. */
+.flyout-right {
+  left: 100%;
+  padding-left: 22px;
+  margin-left: -8px;
+}
+.flyout-left {
+  right: 100%;
+  padding-right: 22px;
+  margin-right: -8px;
 }
 .flyout-title {
   font-family: 'Cinzel', Georgia, serif;
@@ -748,4 +760,11 @@ html, body {
 .verses-scroll {
   flex: 1;
   overflow: hidden;
+}
+
+@keyframes ribbon-flash {
+  0%   { opacity: 0; transform: translate(-50%, 4px); }
+  20%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
 }
