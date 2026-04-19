@@ -258,10 +258,14 @@ function Book({ tweaks }) {
             {/* ------------ FLIPPING PAGE ------------
                 Forward: angle 0→-180, origin left center, layer at right half.
                 Backward: angle 0→+180, origin right center, layer at left half.
-                Front face is what the user was just seeing; back face is the destination side. */}
+                Front face is what the user was just seeing; back face is the
+                destination side. The angle sweep uses an S-curve so the page
+                spends less time at exactly 90° (where a flat plane is invisible). */}
             {activeFlip && (() => {
               const { direction, progress } = activeFlip;
-              const angle = direction === "next" ? -progress * 180 : progress * 180;
+              const sweepEase = (t) => (t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2);
+              const swept = sweepEase(progress);
+              const angle = direction === "next" ? -swept * 180 : swept * 180;
               const frontIdx = direction === "next" ? rightIdx : leftIdx;
               const backIdx = direction === "next" ? nextLeftIdx : prevRightIdx;
               const frontSide = direction === "next" ? "right" : "left";
@@ -269,14 +273,15 @@ function Book({ tweaks }) {
               const origin = direction === "next" ? "left center" : "right center";
               const left = direction === "next" ? "50%" : `calc(50% - var(--page-w))`;
               const lift = Math.sin(Math.PI * progress);
-              const z = lift * 14;
+              const z = lift * 84;
+              const tiltX = lift * -8;
               const shadowSide = direction === "next" ? -1 : 1;
               return (
                 <div className="flip-layer" style={{
                   left,
                   transformOrigin: origin,
-                  transform: `rotateY(${angle}deg) translateZ(${z}px)`,
-                  filter: `drop-shadow(${shadowSide * 4 * lift}px ${6 * lift}px ${10 + 20 * lift}px rgba(0,0,0,${lift * 0.55}))`,
+                  transform: `translateZ(${z}px) rotateY(${angle}deg) rotateX(${tiltX}deg)`,
+                  filter: `drop-shadow(${shadowSide * 14 * lift}px ${18 * lift}px ${24 + 48 * lift}px rgba(0,0,0,${lift * 0.75}))`,
                 }}>
                   <div className="flip-face front">
                     <div className={`page ${frontSide}`}>
@@ -284,10 +289,10 @@ function Book({ tweaks }) {
                         <PageContent pageIndex={frontIdx} onPickBook={goToBook} />
                       </div>
                       <div className="curl-shadow" style={{
-                        opacity: progress < 0.5 ? progress * 0.9 : 0,
+                        opacity: progress < 0.5 ? progress * 1.1 : 0,
                         background: direction === "next"
-                          ? `linear-gradient(-90deg, rgba(0,0,0,${0.4 * progress}) 0%, rgba(0,0,0,${0.1 * progress}) 40%, transparent 70%)`
-                          : `linear-gradient(90deg,  rgba(0,0,0,${0.4 * progress}) 0%, rgba(0,0,0,${0.1 * progress}) 40%, transparent 70%)`,
+                          ? `linear-gradient(-90deg, rgba(0,0,0,${0.45 * progress}) 0%, rgba(0,0,0,${0.15 * progress}) 40%, transparent 72%)`
+                          : `linear-gradient(90deg,  rgba(0,0,0,${0.45 * progress}) 0%, rgba(0,0,0,${0.15 * progress}) 40%, transparent 72%)`,
                       }}/>
                     </div>
                   </div>
@@ -297,10 +302,10 @@ function Book({ tweaks }) {
                         <PageContent pageIndex={backIdx} onPickBook={goToBook} />
                       </div>
                       <div className="curl-shadow" style={{
-                        opacity: progress > 0.5 ? (1 - progress) * 0.9 : 0,
+                        opacity: progress > 0.5 ? (1 - progress) * 1.1 : 0,
                         background: direction === "next"
-                          ? `linear-gradient(90deg,  rgba(0,0,0,${0.4 * (1-progress)}) 0%, rgba(0,0,0,${0.1 * (1-progress)}) 40%, transparent 70%)`
-                          : `linear-gradient(-90deg, rgba(0,0,0,${0.4 * (1-progress)}) 0%, rgba(0,0,0,${0.1 * (1-progress)}) 40%, transparent 70%)`,
+                          ? `linear-gradient(90deg,  rgba(0,0,0,${0.45 * (1-progress)}) 0%, rgba(0,0,0,${0.15 * (1-progress)}) 40%, transparent 72%)`
+                          : `linear-gradient(-90deg, rgba(0,0,0,${0.45 * (1-progress)}) 0%, rgba(0,0,0,${0.15 * (1-progress)}) 40%, transparent 72%)`,
                       }}/>
                     </div>
                   </div>
